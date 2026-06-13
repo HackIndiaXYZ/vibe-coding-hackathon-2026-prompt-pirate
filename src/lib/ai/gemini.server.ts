@@ -17,11 +17,21 @@ import type {
   GenerationResult,
 } from "../types";
 import {
-  agentDefs,
+  boardSystemInstruction,
+  buildSingleReviewPrompt,
   getModeScoreCategories,
-  buildSpecialistPrompt,
-  buildJudgePrompt,
 } from "./agents";
+
+const EXPERT_IDS: ExpertId[] = [
+  "user",
+  "investor",
+  "designer",
+  "engineer",
+  "growth",
+  "judge",
+];
+
+const SPECIALIST_IDS: ExpertId[] = EXPERT_IDS.slice(0, 5);
 
 // ─── Client Factory ───────────────────────────────────────────────────────────
 
@@ -35,33 +45,32 @@ function getClient(): GoogleGenerativeAI {
   return new GoogleGenerativeAI(apiKey);
 }
 
-// ─── Single Agent Call ────────────────────────────────────────────────────────
+// ─── Single Review Board Call ─────────────────────────────────────────────────
 
-async function callAgent(
-  agentId: ExpertId,
-  userPrompt: string,
+async function callReviewBoard(
+  input: GenerationInput,
 ): Promise<Record<string, unknown>> {
   const genAI = getClient();
-  const agentDef = agentDefs.find((a) => a.id === agentId)!;
 
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
-    systemInstruction: agentDef.systemPrompt,
+    systemInstruction: boardSystemInstruction,
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.75,
-      maxOutputTokens: 1500,
+      maxOutputTokens: 8192,
     },
   });
 
-  const result = await model.generateContent(userPrompt);
+  const prompt = buildSingleReviewPrompt(input);
+  const result = await model.generateContent(prompt);
   const text = result.response.text();
 
   try {
     return JSON.parse(text) as Record<string, unknown>;
   } catch {
-    console.error(`[gemini] Failed to parse JSON from ${agentId}:`, text);
-    throw new Error(`Agent ${agentId} returned invalid JSON.`);
+    console.error("[gemini] Failed to parse unified review JSON:", text);
+    throw new Error("Review board returned invalid JSON.");
   }
 }
 
@@ -98,48 +107,29 @@ function parseExpertFeedback(
   };
 }
 
-// ─── Review Engine ────────────────────────────────────────────────────────────
-
-/**
- * Run all 6 AI agents and return a complete GenerationResult.
- * 5 specialist agents run in parallel, then Judge agent synthesizes.
- */
-export async function runReviewEngine(
+function parseUnifiedResponse(
+  raw: Record<string, unknown>,
   input: GenerationInput,
-): Promise<GenerationResult> {
-  const specialistIds: ExpertId[] = [
-    "user",
-    "investor",
-    "designer",
-    "engineer",
-    "growth",
-  ];
-  const basePrompt = buildSpecialistPrompt(input);
+): GenerationResult {
+  const expertsRaw = (raw.experts ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
 
-  // ── Phase 1: Specialists in parallel ──────────────────────────────────────
-  const specialistRaws = await Promise.all(
-    specialistIds.map((id) => callAgent(id, basePrompt)),
+  const expertFeedback: ExpertFeedback[] = EXPERT_IDS.map((id) =>
+    parseExpertFeedback(id, expertsRaw[id] ?? {}),
   );
 
-  const specialistReports: Record<string, object> = {};
-  specialistIds.forEach((id, i) => {
-    specialistReports[id] = specialistRaws[i];
-  });
+  const judgeExpert = expertsRaw.judge ?? {};
+  const specialistScores = SPECIALIST_IDS.map((id) =>
+    num(expertsRaw[id]?.score, 65),
+  );
+  const avgSpecialistScore =
+    specialistScores.length > 0
+      ? specialistScores.reduce((sum, s) => sum + s, 0) / specialistScores.length
+      : 65;
 
-  // ── Phase 2: Judge synthesizes ────────────────────────────────────────────
-  const judgePrompt = buildJudgePrompt(input, specialistReports);
-  const judgeRaw = await callAgent("judge", judgePrompt);
-
-  // ── Build expertFeedback array ────────────────────────────────────────────
-  const expertFeedback: ExpertFeedback[] = [
-    ...specialistIds.map((id, i) =>
-      parseExpertFeedback(id, specialistRaws[i]),
-    ),
-    parseExpertFeedback("judge", judgeRaw),
-  ];
-
-  // ── Extract judge-level fields ────────────────────────────────────────────
-  const overallScore = num(judgeRaw.overallScore ?? judgeRaw.score, 70);
+  const overallScore = num(raw.overallScore ?? judgeExpert.score, 70);
 
   const verdictOptions = [
     "Exceptional",
@@ -148,12 +138,11 @@ export async function runReviewEngine(
     "Needs Work",
     "Not Ready",
   ];
-  const verdictLabel = verdictOptions.includes(str(judgeRaw.verdictLabel))
-    ? str(judgeRaw.verdictLabel)
+  const verdictLabel = verdictOptions.includes(str(raw.verdictLabel))
+    ? str(raw.verdictLabel)
     : "Promising";
 
-  // Scores — use judge's array or fall back to generated values
-  const rawScores = Array.isArray(judgeRaw.scores) ? judgeRaw.scores : [];
+  const rawScores = Array.isArray(raw.scores) ? raw.scores : [];
   const categories = getModeScoreCategories(input.modeId);
   const scores =
     rawScores.length >= categories.length
@@ -170,20 +159,12 @@ export async function runReviewEngine(
             50,
             Math.min(
               95,
-              Math.round(
-                specialistRaws.reduce(
-                  (sum, r) => sum + num(r.score, 65),
-                  0,
-                ) /
-                  specialistRaws.length +
-                  (i % 2 === 0 ? 5 : -5),
-              ),
+              Math.round(avgSpecialistScore + (i % 2 === 0 ? 5 : -5)),
             ),
           ),
         }));
 
-  // Radar
-  const rawRadar = Array.isArray(judgeRaw.radar) ? judgeRaw.radar : [];
+  const rawRadar = Array.isArray(raw.radar) ? raw.radar : [];
   const radar =
     rawRadar.length === 6
       ? rawRadar.map((r: unknown) => {
@@ -197,34 +178,33 @@ export async function runReviewEngine(
       : [
           {
             dimension: "Market",
-            score: num(judgeRaw.score, 70),
+            score: num(expertsRaw.investor?.score, 70),
             benchmark: 65,
           },
           {
             dimension: "Design",
-            score: num(specialistRaws[2]?.score, 65),
+            score: num(expertsRaw.designer?.score, 65),
             benchmark: 60,
           },
           {
             dimension: "Tech",
-            score: num(specialistRaws[3]?.score, 70),
+            score: num(expertsRaw.engineer?.score, 70),
             benchmark: 65,
           },
           {
             dimension: "Growth",
-            score: num(specialistRaws[4]?.score, 60),
+            score: num(expertsRaw.growth?.score, 60),
             benchmark: 55,
           },
           {
             dimension: "Revenue",
-            score: num(specialistRaws[1]?.score, 65),
+            score: num(expertsRaw.investor?.score, 65),
             benchmark: 60,
           },
           { dimension: "Risk", score: overallScore - 10, benchmark: 50 },
         ];
 
-  // Risks
-  const rawRisks = Array.isArray(judgeRaw.risks) ? judgeRaw.risks : [];
+  const rawRisks = Array.isArray(raw.risks) ? raw.risks : [];
   const risks = rawRisks.map((r: unknown) => {
     const obj = r as Record<string, unknown>;
     const sev = str(obj.severity);
@@ -237,9 +217,8 @@ export async function runReviewEngine(
     };
   });
 
-  // Improvements
-  const rawImprovements = Array.isArray(judgeRaw.improvements)
-    ? judgeRaw.improvements
+  const rawImprovements = Array.isArray(raw.improvements)
+    ? raw.improvements
     : [];
   const improvements = rawImprovements.map((item: unknown) => {
     const obj = item as Record<string, unknown>;
@@ -254,11 +233,14 @@ export async function runReviewEngine(
   });
 
   const finalVerdict = str(
-    judgeRaw.finalVerdict ?? judgeRaw.body,
+    raw.finalVerdict ?? judgeExpert.body,
     "The board has delivered its verdict. Please review the full report for detailed analysis.",
   );
 
-  const tagline = str(judgeRaw.headline, `AI review of ${input.projectName}`);
+  const tagline = str(
+    judgeExpert.headline,
+    `AI review of ${input.projectName}`,
+  );
 
   return {
     tagline,
@@ -271,4 +253,19 @@ export async function runReviewEngine(
     improvements,
     finalVerdict,
   };
+}
+
+// ─── Review Engine ────────────────────────────────────────────────────────────
+
+/**
+ * Run the full AI review board in a single Gemini API request.
+ * All 6 expert personas and board-level synthesis are returned as one JSON payload.
+ */
+export async function runReviewEngine(
+  input: GenerationInput,
+): Promise<GenerationResult> {
+  console.info("[gemini] Starting single-call review board generation");
+  const raw = await callReviewBoard(input);
+  console.info("[gemini] Review board generation complete (1 API call)");
+  return parseUnifiedResponse(raw, input);
 }

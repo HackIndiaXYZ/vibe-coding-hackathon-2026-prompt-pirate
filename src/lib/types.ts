@@ -117,6 +117,21 @@ export type GenerationResult = {
   finalVerdict: string;
 };
 
+/** Raw JSON shape returned by the single-call Gemini review board. */
+export type UnifiedGeminiResponse = {
+  experts: Record<
+    ExpertId,
+    Omit<ExpertFeedback, "expertId">
+  >;
+  overallScore: number;
+  verdictLabel: string;
+  scores: ReviewScore[];
+  radar: RadarPoint[];
+  risks: Risk[];
+  improvements: Improvement[];
+  finalVerdict: string;
+};
+
 export type GenerationResponse =
   | { success: true; data: GenerationResult }
   | { success: false; error: string };

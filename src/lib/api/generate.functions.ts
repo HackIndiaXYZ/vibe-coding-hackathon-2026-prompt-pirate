@@ -10,7 +10,7 @@ const inputSchema = z.object({
 });
 
 /**
- * Server function — generates a complete AI review using all 6 agents.
+ * Server function — generates a complete AI review in a single Gemini API call.
  * Called from the review detail page when a review is in "generating" status.
  *
  * Usage:
