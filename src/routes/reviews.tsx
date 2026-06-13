@@ -19,26 +19,27 @@ function Reviews() {
   ];
   return (
     <AppShell>
-      <div className="flex items-end justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
             Docket
           </div>
-          <h1 className="mt-2 font-display text-5xl tracking-tight">All reviews</h1>
-          <p className="mt-2 text-muted-foreground">
+          <h1 className="mt-2 font-display text-4xl sm:text-5xl tracking-tight">All reviews</h1>
+          <p className="mt-2 text-sm sm:text-base text-muted-foreground">
             Every verdict the board has delivered, ranked by recency.
           </p>
         </div>
         <Link
           to="/new"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-3.5 py-2 text-sm font-semibold text-primary-foreground shadow-glow"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-3.5 py-2 text-sm font-semibold text-primary-foreground shadow-glow w-fit"
         >
           <Plus className="size-4" /> New Review
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-sm overflow-hidden">
-        <div className="grid grid-cols-[100px_1fr_180px_140px_80px_60px] gap-4 px-6 py-3 border-b border-border text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
+      {/* Desktop table */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card/40 backdrop-blur-sm overflow-hidden">
+        <div className="grid grid-cols-[100px_1fr_180px_minmax(120px,1fr)_80px_60px] gap-4 px-6 py-3 border-b border-border text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
           <div>ID</div>
           <div>Project</div>
           <div>Mode</div>
@@ -51,27 +52,63 @@ function Reviews() {
             key={r.id}
             to="/review/$reviewId"
             params={{ reviewId: r.id }}
-            className="group grid grid-cols-[100px_1fr_180px_140px_80px_60px] gap-4 px-6 py-4 border-b last:border-b-0 border-border items-center hover:bg-secondary/40 transition-colors"
+            className="group grid grid-cols-[100px_1fr_180px_minmax(120px,1fr)_80px_60px] gap-4 px-6 py-4 border-b last:border-b-0 border-border items-center hover:bg-secondary/40 transition-colors"
           >
             <div className="font-mono text-[11px] text-muted-foreground">{r.id}</div>
-            <div className="font-medium flex items-center gap-2">
-              {r.project}
-              <ArrowUpRight className="size-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="font-medium flex items-center gap-2 min-w-0">
+              <span className="truncate">{r.project}</span>
+              <ArrowUpRight className="size-3.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </div>
-            <div className="text-xs text-muted-foreground">{r.mode}</div>
+            <div className="text-xs text-muted-foreground truncate">{r.mode}</div>
             <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-primary to-accent"
                 style={{ width: `${r.score}%` }}
               />
             </div>
-            <div className="font-display text-2xl text-right">{r.score}</div>
+            <div className="font-display text-2xl text-right tabular-nums">{r.score}</div>
             <div
-              className={`text-right text-xs font-mono ${
+              className={`text-right text-xs font-mono tabular-nums ${
                 r.trend.startsWith("+") ? "text-success" : "text-destructive"
               }`}
             >
               {r.trend}
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {all.map((r) => (
+          <Link
+            key={r.id}
+            to="/review/$reviewId"
+            params={{ reviewId: r.id }}
+            className="block rounded-2xl border border-border bg-card/40 backdrop-blur-sm p-4 active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-[10px] text-muted-foreground">{r.id}</div>
+                <div className="font-medium mt-0.5 truncate">{r.project}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{r.mode}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-display text-3xl tracking-tight tabular-nums">{r.score}</div>
+                <div
+                  className={`text-[11px] font-mono tabular-nums ${
+                    r.trend.startsWith("+") ? "text-success" : "text-destructive"
+                  }`}
+                >
+                  {r.trend}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-accent"
+                style={{ width: `${r.score}%` }}
+              />
             </div>
           </Link>
         ))}

@@ -35,19 +35,19 @@ function ReviewDetail() {
       {/* Breadcrumb */}
       <Link
         to="/reviews"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-5 sm:mb-6"
       >
         <ArrowLeft className="size-3.5" /> Back to docket
       </Link>
 
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-card/40 backdrop-blur-sm p-8 mb-8">
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card/40 backdrop-blur-sm p-6 sm:p-8 mb-6 sm:mb-8">
         <div className="absolute -top-32 right-10 size-96 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 left-10 size-96 rounded-full bg-accent/15 blur-3xl pointer-events-none" />
 
-        <div className="relative grid lg:grid-cols-[1fr_auto] gap-10 items-center">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
+        <div className="relative grid lg:grid-cols-[1fr_auto] gap-8 lg:gap-10 items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3">
               <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
                 {r.id}
               </span>
@@ -55,29 +55,33 @@ function ReviewDetail() {
               <span className="text-[11px] px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-primary font-medium">
                 {mode.title}
               </span>
-              <span className="size-1 rounded-full bg-muted-foreground" />
+              <span className="size-1 rounded-full bg-muted-foreground hidden sm:inline-block" />
               <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                 <Clock className="size-3" /> {r.createdAt}
               </span>
             </div>
-            <h1 className="font-display text-6xl tracking-tight">{r.project}</h1>
-            <p className="mt-2 text-lg text-muted-foreground max-w-[60ch]">{r.tagline}</p>
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.02]">
+              {r.project}
+            </h1>
+            <p className="mt-2 text-base sm:text-lg text-muted-foreground max-w-[60ch]">
+              {r.tagline}
+            </p>
 
-            <div className="mt-6 flex gap-2">
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-xs font-medium hover:bg-card">
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-xs font-medium hover:bg-card transition">
                 <Share2 className="size-3.5" /> Share verdict
               </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-xs font-medium hover:bg-card">
+              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-xs font-medium hover:bg-card transition">
                 <Download className="size-3.5" /> Export PDF
               </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-3 py-2 text-xs font-semibold text-primary-foreground">
+              <button className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-3 py-2 text-xs font-semibold text-primary-foreground shadow-glow active:scale-[0.98] transition">
                 <Sparkles className="size-3.5" /> Re-convene board
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-3">
-            <ScoreRing value={r.overallScore} size={180} label="Overall verdict" />
+          <div className="flex flex-col items-center gap-3 mx-auto lg:mx-0">
+            <ScoreRing value={r.overallScore} size={160} label="Overall verdict" />
             <div className="text-[11px] font-mono uppercase tracking-[0.22em] px-3 py-1 rounded-full border border-success/30 bg-success/10 text-success">
               {r.verdictLabel}
             </div>
@@ -86,16 +90,18 @@ function ReviewDetail() {
       </div>
 
       {/* Score grid */}
-      <section className="mb-8">
+      <section className="mb-6 sm:mb-8">
         <div className="flex items-end justify-between mb-4">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
               Category scorecards
             </div>
-            <h2 className="font-display text-3xl tracking-tight mt-1">Breakdown by rubric</h2>
+            <h2 className="font-display text-2xl sm:text-3xl tracking-tight mt-1">
+              Breakdown by rubric
+            </h2>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {r.scores.map((s, i) => (
             <div key={s.label} style={{ animation: `rise 0.6s ${i * 50}ms both` }}>
               <ScoreCard label={s.label} value={s.value} delta={[3, -1, 5, 2, -2, 7][i]} />
@@ -105,33 +111,35 @@ function ReviewDetail() {
       </section>
 
       {/* Radar + Quick summary */}
-      <section className="grid lg:grid-cols-[1.4fr_1fr] gap-5 mb-8">
-        <div className="rounded-3xl border border-border bg-card/40 backdrop-blur-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div>
+      <section className="grid lg:grid-cols-[1.4fr_1fr] gap-4 sm:gap-5 mb-6 sm:mb-8">
+        <div className="rounded-3xl border border-border bg-card/40 backdrop-blur-sm p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="min-w-0">
               <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
                 Performance vs benchmark
               </div>
-              <div className="font-display text-2xl italic">Multi-axis review</div>
+              <div className="font-display text-xl sm:text-2xl italic">Multi-axis review</div>
             </div>
-            <div className="text-[11px] text-muted-foreground font-mono">cohort: pre-seed SaaS</div>
+            <div className="text-[10px] sm:text-[11px] text-muted-foreground font-mono shrink-0">
+              cohort: pre-seed SaaS
+            </div>
           </div>
           <RadarChart data={r.radar} />
         </div>
 
-        <div className="rounded-3xl border border-border bg-card/40 backdrop-blur-sm p-6">
+        <div className="rounded-3xl border border-border bg-card/40 backdrop-blur-sm p-5 sm:p-6">
           <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
             Signal density
           </div>
-          <div className="font-display text-2xl italic mb-4">Top board signals</div>
+          <div className="font-display text-xl sm:text-2xl italic mb-4">Top board signals</div>
           <div className="space-y-3">
             {r.expertFeedback.map((f, i) => (
               <div key={f.expertId} className="flex items-center gap-3">
-                <div className="font-mono text-[10px] text-muted-foreground w-4">
+                <div className="font-mono text-[10px] text-muted-foreground w-4 shrink-0">
                   {String(i + 1).padStart(2, "0")}
                 </div>
-                <div className="flex-1 text-sm">{f.signal}</div>
-                <div className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+                <div className="flex-1 text-sm min-w-0 truncate">{f.signal}</div>
+                <div className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border text-muted-foreground shrink-0">
                   {f.rating}
                 </div>
               </div>
@@ -141,20 +149,20 @@ function ReviewDetail() {
       </section>
 
       {/* Expert Panel */}
-      <section className="mb-8">
+      <section className="mb-6 sm:mb-8">
         <ExpertPanel feedback={r.expertFeedback} />
       </section>
 
       {/* Risks + Improvements */}
-      <section className="grid lg:grid-cols-2 gap-5 mb-8">
-        <div className="rounded-3xl border border-destructive/20 bg-destructive/[0.04] backdrop-blur-sm p-6">
+      <section className="grid lg:grid-cols-2 gap-4 sm:gap-5 mb-6 sm:mb-8">
+        <div className="rounded-3xl border border-destructive/20 bg-destructive/[0.04] backdrop-blur-sm p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="size-4 text-destructive" />
             <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-destructive">
               Risk analysis
             </div>
           </div>
-          <div className="font-display text-2xl italic mb-4">Critical risks</div>
+          <div className="font-display text-xl sm:text-2xl italic mb-4">Critical risks</div>
           <div className="space-y-3">
             {r.risks.map((risk, i) => (
               <div
@@ -170,11 +178,11 @@ function ReviewDetail() {
                         : "bg-muted-foreground"
                   }`}
                 />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-medium">{risk.title}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium text-sm sm:text-base">{risk.title}</div>
                     <span
-                      className={`text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                      className={`text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0 ${
                         risk.severity === "critical"
                           ? "bg-destructive/15 text-destructive"
                           : risk.severity === "high"
@@ -192,14 +200,14 @@ function ReviewDetail() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-success/20 bg-success/[0.04] backdrop-blur-sm p-6">
+        <div className="rounded-3xl border border-success/20 bg-success/[0.04] backdrop-blur-sm p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 className="size-4 text-success" />
             <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-success">
               Improvement roadmap
             </div>
           </div>
-          <div className="font-display text-2xl italic mb-4">Take these actions</div>
+          <div className="font-display text-xl sm:text-2xl italic mb-4">Take these actions</div>
           <div className="space-y-3">
             {r.improvements.map((imp, i) => (
               <div key={i} className="rounded-xl border border-border bg-card/60 p-4 flex gap-3">
@@ -214,8 +222,8 @@ function ReviewDetail() {
                 >
                   {imp.priority}
                 </span>
-                <div className="flex-1">
-                  <div className="font-medium">{imp.title}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm sm:text-base">{imp.title}</div>
                   <div className="text-sm text-muted-foreground mt-1">{imp.detail}</div>
                 </div>
               </div>
@@ -226,7 +234,7 @@ function ReviewDetail() {
 
       {/* Final Verdict */}
       <section className="mb-12">
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-card/60 backdrop-blur-sm p-10 md:p-14">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-card/60 backdrop-blur-sm p-7 sm:p-10 md:p-14">
           <div className="absolute top-0 left-0 h-px w-32 bg-gradient-to-r from-primary to-transparent" />
           <div className="absolute top-0 left-0 w-px h-32 bg-gradient-to-b from-primary to-transparent" />
           <div className="flex items-center gap-2 mb-3">
@@ -235,10 +243,10 @@ function ReviewDetail() {
               Final verdict
             </div>
           </div>
-          <p className="font-display text-3xl md:text-4xl leading-[1.15] italic max-w-[60ch] text-foreground/95">
+          <p className="font-display text-2xl sm:text-3xl md:text-4xl leading-[1.18] italic max-w-[60ch] text-foreground/95">
             "{r.finalVerdict}"
           </p>
-          <div className="mt-6 pt-6 border-t border-border flex items-center justify-between">
+          <div className="mt-6 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
               — The Honorable Aurelia Vance, Chief Judge · Board #{r.id.replace("REV-", "")}
             </div>
