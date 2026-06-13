@@ -14,19 +14,19 @@ export function RadarChart({
   data: { dimension: string; score: number; benchmark: number }[];
 }) {
   return (
-    <div className="h-[320px] w-full">
+    <div className="h-[260px] sm:h-[320px] w-full -mx-2 sm:mx-0">
       <ResponsiveContainer width="100%" height="100%">
-        <RRadar data={data} outerRadius="78%">
+        <RRadar data={data} outerRadius="72%">
           <defs>
             <linearGradient id="radarFill" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="oklch(0.7 0.19 268)" stopOpacity={0.6} />
+              <stop offset="0%" stopColor="oklch(0.7 0.19 268)" stopOpacity={0.7} />
               <stop offset="100%" stopColor="oklch(0.78 0.14 195)" stopOpacity={0.2} />
             </linearGradient>
           </defs>
           <PolarGrid stroke="oklch(1 0 0 / 0.08)" />
           <PolarAngleAxis
             dataKey="dimension"
-            tick={{ fill: "oklch(0.66 0.02 265)", fontSize: 11, fontFamily: "Inter" }}
+            tick={{ fill: "oklch(0.72 0.02 265)", fontSize: 10, fontFamily: "Inter" }}
           />
           <PolarRadiusAxis
             angle={90}
@@ -39,7 +39,7 @@ export function RadarChart({
             dataKey="benchmark"
             stroke="oklch(0.5 0.02 265)"
             fill="oklch(0.5 0.02 265)"
-            fillOpacity={0.1}
+            fillOpacity={0.08}
             strokeDasharray="4 4"
           />
           <Radar
@@ -49,9 +49,16 @@ export function RadarChart({
             strokeWidth={2}
             fill="url(#radarFill)"
             fillOpacity={1}
+            isAnimationActive
+            animationDuration={1200}
           />
           <Legend
-            wrapperStyle={{ fontSize: 11, fontFamily: "JetBrains Mono", color: "oklch(0.66 0.02 265)" }}
+            wrapperStyle={{
+              fontSize: 10,
+              fontFamily: "JetBrains Mono",
+              color: "oklch(0.66 0.02 265)",
+              paddingTop: 8,
+            }}
           />
         </RRadar>
       </ResponsiveContainer>
