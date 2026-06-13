@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   Sparkles,
   Plus,
@@ -8,8 +8,10 @@ import {
   Search,
   Menu,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { getAllReviews } from "@/lib/storage";
+import type { StoredReview } from "@/lib/types";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -30,6 +32,27 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const location = useLocation();
+  const [recent, setRecent] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const stored = getAllReviews();
+    if (stored.length > 0) {
+      setRecent(
+        stored.slice(0, 5).map((r) => ({
+          id: r.id,
+          name: r.projectName,
+        }))
+      );
+    } else {
+      setRecent([
+        { id: "REV-08291", name: "OmniStream Alpha" },
+        { id: "REV-08284", name: "Halo Finance" },
+        { id: "REV-08271", name: "Beacon Studio" },
+      ]);
+    }
+  }, [location.pathname]);
+
   return (
     <>
       <div className="flex h-16 items-center gap-2.5 px-6 border-b border-border/60">
@@ -55,11 +78,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <div className="px-3 pb-2 text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
             Recent
           </div>
-          {[
-            { id: "REV-08291", name: "OmniStream Alpha" },
-            { id: "REV-08284", name: "Halo Finance" },
-            { id: "REV-08271", name: "Beacon Studio" },
-          ].map((r) => (
+          {recent.map((r) => (
             <Link
               key={r.id}
               to="/review/$reviewId"

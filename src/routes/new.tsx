@@ -4,6 +4,7 @@ import { reviewModes, type ReviewModeId } from "@/lib/review-data";
 import { useState } from "react";
 import { ArrowRight, Sparkles, Upload, Link2, FileText } from "lucide-react";
 import { z } from "zod";
+import { saveReview, generateReviewId } from "@/lib/storage";
 
 const search = z.object({
   mode: z
@@ -151,7 +152,32 @@ function NewReview() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              navigate({ to: "/review/$reviewId", params: { reviewId: "REV-08291" } });
+              const formData = new FormData(e.currentTarget);
+              const projectName = (formData.get("projectName") as string)?.trim();
+              if (!projectName) return;
+
+              const inputs: Record<string, string> = {};
+              current.inputs.forEach((label) => {
+                inputs[label] = ((formData.get(label) as string) || "").trim();
+              });
+
+              const reviewId = generateReviewId();
+              const newReview = {
+                id: reviewId,
+                projectName,
+                tagline: "Convening the AI Review Board...",
+                modeId: selected,
+                status: "pending" as const,
+                createdAt: new Date().toISOString(),
+                submission: {
+                  projectName,
+                  modeId: selected,
+                  inputs,
+                },
+              };
+
+              saveReview(newReview);
+              navigate({ to: "/review/$reviewId", params: { reviewId } });
             }}
             className="rounded-2xl border border-border bg-card/40 backdrop-blur-sm p-5 sm:p-8 space-y-6"
           >
@@ -160,6 +186,22 @@ function NewReview() {
                 Inputs
               </div>
               <div className="space-y-4">
+                {/* Project Name Field */}
+                <div className="block">
+                  <label htmlFor="input-project-name" className="flex items-center gap-2 mb-1.5">
+                    <FileText className="size-3.5 text-muted-foreground" />
+                    <span className="text-[12px] font-medium">Project Name</span>
+                  </label>
+                  <input
+                    id="input-project-name"
+                    name="projectName"
+                    type="text"
+                    required
+                    placeholder="Enter the name of your project or idea..."
+                    className="w-full h-11 rounded-lg border border-border bg-background/60 px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                </div>
+
                 {current.inputs.map((label) => {
                   const Icon = label.toLowerCase().includes("link") || label.toLowerCase().includes("url")
                     ? Link2
@@ -177,6 +219,7 @@ function NewReview() {
                       {isLong ? (
                         <textarea
                           id={inputId}
+                          name={label}
                           rows={4}
                           placeholder={`Describe your ${label.toLowerCase()}…`}
                           className="w-full rounded-lg border border-border bg-background/60 px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 resize-none"
@@ -184,6 +227,7 @@ function NewReview() {
                       ) : (
                         <input
                           id={inputId}
+                          name={label}
                           type="text"
                           placeholder={`Enter ${label.toLowerCase()}`}
                           className="w-full h-11 rounded-lg border border-border bg-background/60 px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"

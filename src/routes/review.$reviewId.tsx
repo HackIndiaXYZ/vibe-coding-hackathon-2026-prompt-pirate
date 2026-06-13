@@ -14,7 +14,15 @@ import {
   Sparkles,
   Clock,
   Gavel,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getReviewById, saveReview } from "@/lib/storage";
+import { generateReview } from "@/lib/api/generate.functions";
+import type { StoredReview, ExpertId, AgentStatus } from "@/lib/types";
+import { GenerationProgress } from "@/components/GenerationProgress";
 
 export const Route = createFileRoute("/review/$reviewId")({
   head: ({ params }) => ({
@@ -26,9 +34,351 @@ export const Route = createFileRoute("/review/$reviewId")({
   component: ReviewDetail,
 });
 
+function getMockReview(id: string): StoredReview | null {
+  const mockList = [
+    { id: "REV-08291", project: "OmniStream Alpha", mode: "startup" },
+    { id: "REV-08284", project: "Halo Finance", mode: "pitch" },
+    { id: "REV-08271", project: "Beacon Studio", mode: "prototype" },
+    { id: "REV-08262", project: "Loop Health", mode: "website" },
+    { id: "REV-08250", project: "Drift CRM", mode: "growth" },
+    { id: "REV-08245", project: "Nimbus Notes", mode: "hackathon" },
+    { id: "REV-08231", project: "Stride Run Club", mode: "mobile" },
+    { id: "REV-08220", project: "Atlas Pricing", mode: "competitor" },
+  ];
+  
+  const found = mockList.find(m => m.id === id);
+  if (!found) return null;
+  
+  return {
+    id: found.id,
+    projectName: found.project,
+    tagline: sampleReview.tagline,
+    modeId: found.mode as any,
+    status: "complete",
+    createdAt: "2 hours ago",
+    submission: {
+      projectName: found.project,
+      modeId: found.mode as any,
+      inputs: {},
+    },
+    overallScore: sampleReview.overallScore,
+    verdictLabel: sampleReview.verdictLabel,
+    scores: sampleReview.scores,
+    radar: sampleReview.radar,
+    expertFeedback: sampleReview.expertFeedback.map(f => ({
+      ...f,
+      expertId: f.expertId as ExpertId,
+      score: f.expertId === "judge" ? sampleReview.overallScore : 80,
+      strengths: ["Market fit", "Execution viability", "Clear value prop"],
+      weaknesses: ["High initial CAC", "Complex user flow", "Limited early moat"],
+      recommendations: ["Focus on niche enterprise", "Add progressive disclosure", "Build virality loops"]
+    })),
+    risks: sampleReview.risks,
+    improvements: sampleReview.improvements,
+    finalVerdict: sampleReview.finalVerdict,
+  };
+}
+
 function ReviewDetail() {
-  const r = sampleReview;
-  const mode = reviewModes.find((m) => m.id === r.modeId)!;
+  const { reviewId } = Route.useParams();
+  const [review, setReview] = useState<StoredReview | null>(null);
+  
+  // Progress states
+  const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({
+    init: "idle",
+    user: "idle",
+    investor: "idle",
+    designer: "idle",
+    engineer: "idle",
+    growth: "idle",
+    judge: "idle",
+    saving: "idle",
+  });
+  const [currentStep, setCurrentStep] = useState<string>("Initializing board...");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Fetch or mock review
+  useEffect(() => {
+    if (!isClient) return;
+
+    let found = getReviewById(reviewId);
+    if (!found) {
+      found = getMockReview(reviewId);
+    }
+
+    if (found) {
+      setReview(found);
+      if (found.status === "error") {
+        setErrorMsg(found.errorMessage || "An error occurred during review generation.");
+      }
+    } else {
+      setErrorMsg("Review docket not found in local storage.");
+    }
+  }, [reviewId, isClient]);
+
+  // Generation effect
+  useEffect(() => {
+    if (!review) return;
+    if (review.status !== "pending" && review.status !== "generating") return;
+
+    let active = true;
+    const timers: NodeJS.Timeout[] = [];
+
+    // Mark as generating in state and storage
+    if (review.status === "pending") {
+      const updated = { ...review, status: "generating" as const };
+      saveReview(updated);
+      setReview(updated);
+    }
+
+    // Agent timeline simulation
+    setCurrentStep("Convene the board...");
+    setStatuses({
+      init: "running",
+      user: "idle",
+      investor: "idle",
+      designer: "idle",
+      engineer: "idle",
+      growth: "idle",
+      judge: "idle",
+      saving: "idle",
+    });
+
+    // Staggered status activation
+    timers.push(
+      setTimeout(() => {
+        if (!active) return;
+        setStatuses(prev => ({
+          ...prev,
+          init: "complete",
+          user: "running",
+          investor: "running",
+          designer: "running",
+          engineer: "running",
+          growth: "running",
+        }));
+        setCurrentStep("Specialists evaluating project...");
+
+        const agents: ExpertId[] = ["user", "investor", "designer", "engineer", "growth"];
+        agents.forEach((id, index) => {
+          timers.push(
+            setTimeout(() => {
+              if (!active) return;
+              setStatuses(prev => {
+                const next = { ...prev, [id]: "complete" as AgentStatus };
+                const allSpecialistsDone = agents.every(
+                  aId => aId === id || next[aId] === "complete"
+                );
+                if (allSpecialistsDone) {
+                  setCurrentStep("Chief Judge synthesizing final verdict...");
+                  return { ...next, judge: "running" as AgentStatus };
+                }
+                return next;
+              });
+            }, 2000 + index * 1000 + Math.random() * 500)
+          );
+        });
+      }, 1500)
+    );
+
+    // Call the backend API server function
+    generateReview({
+      data: {
+        projectName: review.projectName,
+        modeId: review.modeId,
+        inputs: review.submission.inputs,
+      },
+    })
+      .then(res => {
+        if (!active) return;
+
+        if (res.success && res.data) {
+          const result = res.data;
+          
+          // Clear all pending timers to instantly finish
+          timers.forEach(clearTimeout);
+
+          setStatuses({
+            init: "complete",
+            user: "complete",
+            investor: "complete",
+            designer: "complete",
+            growth: "complete",
+            engineer: "complete",
+            judge: "complete",
+            saving: "running",
+          });
+          setCurrentStep("Filing review report...");
+
+          // Stagger the completed report view transition slightly for visual polish
+          timers.push(
+            setTimeout(() => {
+              if (!active) return;
+              const completeReview: StoredReview = {
+                ...review,
+                status: "complete",
+                tagline: result.tagline,
+                overallScore: result.overallScore,
+                verdictLabel: result.verdictLabel,
+                scores: result.scores,
+                radar: result.radar,
+                expertFeedback: result.expertFeedback,
+                risks: result.risks,
+                improvements: result.improvements,
+                finalVerdict: result.finalVerdict,
+              };
+
+              saveReview(completeReview);
+              setReview(completeReview);
+              setStatuses(prev => ({ ...prev, saving: "complete" }));
+            }, 1200)
+          );
+        } else {
+          const errMsg = ("error" in res ? res.error : "Failed to run Gemini review board.");
+          handleFail(errMsg);
+        }
+      })
+      .catch(err => {
+        if (!active) return;
+        handleFail(err instanceof Error ? err.message : "Network error or API key missing.");
+      });
+
+    function handleFail(msg: string) {
+      timers.forEach(clearTimeout);
+      setStatuses(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(k => {
+          if (next[k] === "running" || next[k] === "idle") {
+            next[k] = "error";
+          }
+        });
+        return next;
+      });
+      setCurrentStep("Generation failed");
+      
+      const errorReview: StoredReview = {
+        ...review!,
+        status: "error",
+        errorMessage: msg,
+      };
+      saveReview(errorReview);
+      setReview(errorReview);
+      setErrorMsg(msg);
+    }
+
+    return () => {
+      active = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [review?.status]);
+
+  const handleRetry = () => {
+    if (!review) return;
+    setErrorMsg(null);
+    const pendingReview = {
+      ...review,
+      status: "pending" as const,
+      errorMessage: undefined,
+    };
+    saveReview(pendingReview);
+    setReview(pendingReview);
+  };
+
+  // SSR Loading state
+  if (!isClient || !review) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <Loader2 className="size-8 text-primary animate-spin" />
+          <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+            {errorMsg ? errorMsg : "Loading Docket..."}
+          </div>
+          {errorMsg && (
+            <Link to="/new" className="text-xs text-primary underline mt-2">
+              Start a new review
+            </Link>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Error State
+  if (review.status === "error") {
+    return (
+      <AppShell>
+        <div className="max-w-xl mx-auto my-12 p-6 rounded-3xl border border-destructive/20 bg-destructive/[0.03] backdrop-blur-sm space-y-6">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="size-8 text-destructive" />
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">
+                Review Generation Error
+              </div>
+              <h1 className="font-display text-2xl tracking-tight mt-0.5">Board failed to respond</h1>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-background/50 p-4 font-mono text-xs text-destructive/90 overflow-x-auto whitespace-pre-wrap">
+            {errorMsg || "An unexpected error occurred during review. Please verify your GEMINI_API_KEY is configured correctly."}
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-4 py-2 text-xs font-semibold text-primary-foreground shadow-glow active:scale-[0.98] transition animate-pulse"
+            >
+              <RefreshCw className="size-3.5" /> Re-convene board
+            </button>
+            <Link
+              to="/new"
+              className="inline-flex items-center justify-center rounded-lg border border-border bg-card/60 px-4 py-2 text-xs font-medium hover:bg-card transition"
+            >
+              Back to form
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Generating State
+  if (review.status === "pending" || review.status === "generating") {
+    return (
+      <AppShell>
+        <GenerationProgress
+          projectName={review.projectName}
+          modeId={review.modeId}
+          statuses={statuses}
+          currentStep={currentStep}
+        />
+      </AppShell>
+    );
+  }
+
+  // Complete State
+  const mode = reviewModes.find((m) => m.id === review.modeId)!;
+  
+  // Map fields for rendering
+  const r = {
+    id: review.id,
+    project: review.projectName,
+    tagline: review.tagline,
+    modeId: review.modeId,
+    createdAt: review.createdAt ? (new Date(review.createdAt).toLocaleDateString() === new Date().toLocaleDateString() ? "Today" : new Date(review.createdAt).toLocaleDateString()) : "Recently",
+    overallScore: review.overallScore ?? 70,
+    verdictLabel: review.verdictLabel ?? "Promising",
+    scores: review.scores ?? [],
+    radar: review.radar ?? [],
+    expertFeedback: review.expertFeedback ?? [],
+    risks: review.risks ?? [],
+    improvements: review.improvements ?? [],
+    finalVerdict: review.finalVerdict ?? "",
+  };
 
   return (
     <AppShell>
@@ -74,7 +424,10 @@ function ReviewDetail() {
               <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-xs font-medium hover:bg-card transition">
                 <Download className="size-3.5" /> Export PDF
               </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-3 py-2 text-xs font-semibold text-primary-foreground shadow-glow active:scale-[0.98] transition">
+              <button 
+                onClick={handleRetry}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-primary to-accent px-3 py-2 text-xs font-semibold text-primary-foreground shadow-glow active:scale-[0.98] transition"
+              >
                 <Sparkles className="size-3.5" /> Re-convene board
               </button>
             </div>

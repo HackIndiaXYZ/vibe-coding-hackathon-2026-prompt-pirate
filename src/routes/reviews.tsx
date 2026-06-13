@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { recentReviews } from "@/lib/review-data";
-import { ArrowUpRight, Plus } from "lucide-react";
+import { recentReviews, reviewModes } from "@/lib/review-data";
+import { ArrowUpRight, Plus, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getAllReviews } from "@/lib/storage";
 
 export const Route = createFileRoute("/reviews")({
   head: () => ({
@@ -11,12 +13,35 @@ export const Route = createFileRoute("/reviews")({
 });
 
 function Reviews() {
-  const all = [
-    ...recentReviews,
-    { id: "REV-08245", project: "Nimbus Notes", mode: "Hackathon Project", score: 88, trend: "+8" },
-    { id: "REV-08231", project: "Stride Run Club", mode: "Mobile App", score: 67, trend: "+1" },
-    { id: "REV-08220", project: "Atlas Pricing", mode: "Competitor Positioning", score: 74, trend: "+5" },
-  ];
+  const [all, setAll] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    const stored = getAllReviews();
+    const mappedStored = stored.map(r => {
+      const mode = reviewModes.find(m => m.id === r.modeId);
+      return {
+        id: r.id,
+        project: r.projectName,
+        mode: mode ? mode.title : "Review",
+        score: r.overallScore ?? 0,
+        trend: r.status === "complete" ? "+0" : r.status === "generating" || r.status === "pending" ? "Gen..." : "Err",
+        status: r.status,
+      };
+    });
+
+    const samples = [
+      ...recentReviews.map(r => ({ ...r, status: "complete" })),
+      { id: "REV-08245", project: "Nimbus Notes", mode: "Hackathon Project", score: 88, trend: "+8", status: "complete" },
+      { id: "REV-08231", project: "Stride Run Club", mode: "Mobile App", score: 67, trend: "+1", status: "complete" },
+      { id: "REV-08220", project: "Atlas Pricing", mode: "Competitor Positioning", score: 74, trend: "+5", status: "complete" },
+    ];
+
+    const filteredSamples = samples.filter(s => !mappedStored.some(m => m.id === s.id));
+    setAll([...mappedStored, ...filteredSamples]);
+  }, []);
+
   return (
     <AppShell>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 sm:mb-8">
@@ -66,10 +91,16 @@ function Reviews() {
                 style={{ width: `${r.score}%` }}
               />
             </div>
-            <div className="font-display text-2xl text-right tabular-nums">{r.score}</div>
+            <div className="font-display text-2xl text-right tabular-nums">
+              {r.status === "complete" ? r.score : "—"}
+            </div>
             <div
               className={`text-right text-xs font-mono tabular-nums ${
-                r.trend.startsWith("+") ? "text-success" : "text-destructive"
+                r.trend.startsWith("+")
+                  ? "text-success"
+                  : r.trend === "Gen..."
+                    ? "text-primary animate-pulse font-semibold"
+                    : "text-destructive"
               }`}
             >
               {r.trend}
@@ -90,14 +121,25 @@ function Reviews() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="font-mono text-[10px] text-muted-foreground">{r.id}</div>
-                <div className="font-medium mt-0.5 truncate">{r.project}</div>
+                <div className="font-medium mt-0.5 truncate flex items-center gap-1.5">
+                  <span className="truncate">{r.project}</span>
+                  {(r.status === "generating" || r.status === "pending") && (
+                    <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
+                  )}
+                </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">{r.mode}</div>
               </div>
               <div className="text-right shrink-0">
-                <div className="font-display text-3xl tracking-tight tabular-nums">{r.score}</div>
+                <div className="font-display text-3xl tracking-tight tabular-nums">
+                  {r.status === "complete" ? r.score : "—"}
+                </div>
                 <div
                   className={`text-[11px] font-mono tabular-nums ${
-                    r.trend.startsWith("+") ? "text-success" : "text-destructive"
+                    r.trend.startsWith("+")
+                      ? "text-success"
+                      : r.trend === "Gen..."
+                        ? "text-primary animate-pulse font-semibold"
+                        : "text-destructive"
                   }`}
                 >
                   {r.trend}
@@ -106,8 +148,8 @@ function Reviews() {
             </div>
             <div className="mt-3 h-1.5 rounded-full bg-secondary overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-primary to-accent"
-                style={{ width: `${r.score}%` }}
+                className={`h-full ${r.status === "generating" || r.status === "pending" ? "bg-primary/40 animate-pulse" : "bg-gradient-to-r from-primary to-accent"}`}
+                style={{ width: `${r.status === "complete" ? r.score : 30}%` }}
               />
             </div>
           </Link>
