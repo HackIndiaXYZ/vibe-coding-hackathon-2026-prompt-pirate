@@ -1,30 +1,49 @@
 # ProductJudge AI
 
-ProductJudge AI is an AI-powered review board that evaluates:
+ProductJudge AI is an AI-powered product review board that helps founders, students, developers, and creators validate their ideas before investing time, money, and effort into building them.
 
-- Startup Ideas
-- Hackathon Projects
-- Investor Pitches
-- Websites
-- Mobile Apps
-- Product Workflows
+Instead of relying on feedback from a single AI chatbot, ProductJudge AI simulates a panel of specialized experts who evaluate products from multiple perspectives and generate structured, actionable insights.
 
-The platform simulates a panel of AI experts:
+## What ProductJudge AI Reviews
 
-- User Agent
-- Investor Agent
-- Designer Agent
-- Engineer Agent
-- Growth Agent
-- Judge Agent
+* Startup Ideas
+* Hackathon Projects
+* Investor Pitches
+* Websites
+* Mobile Apps
+* Product Workflows
+* Product Concepts & MVPs
 
-Each review generates:
+## AI Expert Panel
 
-- Scores
-- Strengths
-- Weaknesses
-- Recommendations
-- Risk Analysis
-- Improvement Roadmap
-- Final Verdict
+Every review is evaluated by six AI experts:
 
+* 👤 User Agent — User experience, clarity, usability
+* 💰 Investor Agent — Market opportunity, scalability, monetization
+* 🎨 Designer Agent — UI, UX, accessibility, conversion
+* ⚙️ Engineer Agent — Technical feasibility, architecture, complexity
+* 📈 Growth Agent — Acquisition, retention, growth opportunities
+* 🏆 Judge Agent — Final evaluation and overall verdict
+
+## Generated Insights
+
+Each review includes:
+
+* Overall Score
+* Expert Scores
+* Strengths
+* Weaknesses
+* Recommendations
+* Risk Analysis
+* Improvement Roadmap
+* Final Verdict
+
+## Why ProductJudge AI?
+
+AI has made building products easier than ever.
+
+However, validating whether a product is actually good remains difficult.
+
+ProductJudge AI helps creators identify flaws, improve quality, and increase their chances of success before launch.
+
+Built for HackIndia Vibe Coding Hackathon 2026.
